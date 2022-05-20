@@ -7,4 +7,5 @@
 
 В теле функции inference.py также необходимо указать ссылку на папку, в которой будет распакован Open Face.
 
+Ссылка на репозиторий Open Face - https://github.com/TadasBaltrusaitis/OpenFace/
 
