@@ -12,6 +12,15 @@ from tensorflow.keras.models import load_model
 
 
 def cut_videos(clipping_length, file_path, file_folder_save_path, fps=30):
+    """
+    Функция нарезает видно на отрезки равные clipping_length и пересохраняет их
+    с указанным fps.
+    :param clipping_length: длина нарезки видео в секундах
+    :param file_path: путь к видео
+    :param file_folder_save_path: путь к папке, куда будем сохранять
+    :param fps: frames per second - пересохраняет видно с такими показателями
+    :return:
+    """
     os.makedirs(pathlib.Path(file_folder_save_path, 'Cut'), exist_ok=True)
     os.chdir(file_path.parent)
     video = file_path.name
@@ -61,6 +70,13 @@ def cut_videos(clipping_length, file_path, file_folder_save_path, fps=30):
 
 
 def get_au(path_with_cut_videos, path_to_Open_Face_folder):
+    """
+    Функция получения метрик с программы OpenFace.
+    :param path_with_cut_videos: путь к нарезанным видео.
+    :param path_to_Open_Face_folder: путь к папке с программой OpenFace.
+    :return:
+    .csv файл с метриками. Сохраняется в той же папке, что и нарезанные видео.
+    """
     os.chdir(path_to_Open_Face_folder)
 
     video_list = os.listdir(path_with_cut_videos)
@@ -76,6 +92,14 @@ def get_au(path_with_cut_videos, path_to_Open_Face_folder):
 
 
 def concat_dataframes(path_with_cut_videos, clipping_length=10, fps=30):
+    """
+    Функция сложения датафреймов и подготовки массива для подачи в нейронную сеть.
+    :param path_with_cut_videos: путь к папке с нарезанными видео
+    :param fps: frames per second - пересохраняет видно с такими показателями
+    :param clipping_length: длина нарезки видео в секундах
+    :return:
+    numpy массив c данными (выход программы OpenFace)
+    """
     au_arr = None
     for i, file in enumerate(os.listdir(path_with_cut_videos)):
         if file.endswith('.csv'):
@@ -99,6 +123,15 @@ def concat_dataframes(path_with_cut_videos, clipping_length=10, fps=30):
 
 
 def get_predict(model, au_arr, fps, clipping_length):
+    """
+    Функция предикта и подсчета среднего значения по каждому отрезку видео.
+    :param model: модель нейронной сети
+    :param au_arr: numpy массив c данными (выход программы OpenFace)
+    :param fps: frames per second - пересохраняет видно с такими показателями
+    :param clipping_length: длина нарезки видео в секундах
+    :return:
+    Выдает значение lie/True (берет предикт по каждому отрезку видео, считает среднее, и выдает ответ).
+    """
     arr_batch_length = fps * clipping_length  # какими кусками подаем данные в модель (на каких кусках обучали, на таких и подаем)
 
     nr_batches = int(au_arr.shape[0] / arr_batch_length)
@@ -116,6 +149,21 @@ def get_predict(model, au_arr, fps, clipping_length):
 
 
 def main(file_path, file_folder_save_path, path_to_Open_Face_folder, model_path, clipping_length=10, fps=30):
+    """
+    Основная функция для инференса. Входной видео файл разбивается на фрагменты длинной clipping_length, пересохраняются
+    с указанным fps. Если длина файла не кратна clipping length, то csv файл с AU метриками, с которым работает сама
+    обученная модель, удлинняется за счет копирования строк в кол-ве, равном недостающему кол-ву строк для получения
+    массивов длинной clipping_length*fps.
+    :param file_path: путь к видео. Видео в формате mp4.
+    :param file_folder_save_path: папка для сохранения данных
+    :param path_to_Open_Face_folder: папка с распакованным дистрибутивом OpenFace.
+    :param model_path: путь к модели. Модель в формате .h5 или в специальном формате tf (станданртый выход model.save())
+    :param clipping_length: длина нарезки видео в секундах
+    :param fps: frames per second - пересохраняет видно с такими показателями
+    :return:
+    Выдает значение lie/True (берет предикт по каждому отрезку видео, считает среднее, и выдает ответ).
+    """
+
     path_with_cut_videos = cut_videos(clipping_length=clipping_length, file_path=file_path,
                                       file_folder_save_path=file_folder_save_path, fps=fps)
 
