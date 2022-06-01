@@ -13,7 +13,7 @@ from tensorflow.keras.models import load_model
 
 def cut_videos(clipping_length, file_path, file_folder_save_path, fps=30):
     """
-    Функция нарезает видно на отрезки равные clipping_length и пересохраняет их
+    Функция нарезает видео на отрезки равные clipping_length и пересохраняет их
     с указанным fps.
     :param clipping_length: длина нарезки видео в секундах
     :param file_path: путь к видео
@@ -26,7 +26,7 @@ def cut_videos(clipping_length, file_path, file_folder_save_path, fps=30):
     video = file_path.name
     clip = VideoFileClip(video)
     duration_sec = clip.duration
-    clipping_cycles = math.floor(duration_sec / clipping_length)
+    clipping_cycles = math.ceil(duration_sec / clipping_length) # было floor
 
     try:
         existing_folders = os.listdir(str(file_folder_save_path) + '/Cut')  # все цифровые папки
@@ -55,7 +55,7 @@ def cut_videos(clipping_length, file_path, file_folder_save_path, fps=30):
 
             except OSError:
                 try:
-                    start = (i - 1) * clipping_length  # откатываемся с последнего цикла
+                    start = i * clipping_length  # откатываемся с последнего цикла
                     end = int(clip.duration) - 1
                     n_clip = clip.subclip(start, end)
                     n_clip.write_videofile(f"{file_folder_save_path}/Cut/{existing_folders + 1}/{start}_{end}_{video}",
@@ -106,18 +106,17 @@ def concat_dataframes(path_with_cut_videos, clipping_length=10, fps=30):
             if au_arr is None:
                 df = pd.read_csv(pathlib.Path(path_with_cut_videos, file))
                 au_arr = list(np.concatenate((df[df.columns[-35:-18]].values, df[df.columns[11:13]].values), axis=1))
-                print('we are here')
             else:
                 df = pd.read_csv(pathlib.Path(path_with_cut_videos, file))
                 temp_au_arr = list(
                     np.concatenate((df[df.columns[-35:-18]].values, df[df.columns[11:13]].values), axis=1))
                 au_arr = np.concatenate((au_arr, temp_au_arr))
-                print('Nope, here')
 
     au_arr = np.array(au_arr)
     leng = au_arr.shape[0]  # смотрим, сколько всего фреймов(строчек) получилось в нашем файле
     to_append_in_the_end = au_arr[0: (clipping_length * fps) - leng % (clipping_length * fps)]
     au_arr = np.concatenate((au_arr, to_append_in_the_end))
+    print(au_arr.shape)
 
     return au_arr
 
@@ -138,6 +137,7 @@ def get_predict(model, au_arr, fps, clipping_length):
     pred_results = []
     for i in range(nr_batches):
         pred = model.predict(np.expand_dims(au_arr[i * arr_batch_length: (i + 1) * arr_batch_length, :], axis=0))[0][0]
+        print(i * arr_batch_length, (i + 1) * arr_batch_length)
         pred_results.append(pred)
 
     answer = round(sum(pred_results) / len(pred_results), 0)
